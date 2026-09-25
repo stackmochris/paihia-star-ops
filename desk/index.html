@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2F4F3A">
+<title>Star Desk</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root { --g:#2F4F3A; --sand:#c4a574; --bg:#f3eee6; --ink:#1c241c; --card:#fffdf8; --bad:#8b3a2a; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.4 system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:var(--g); color:#fff; padding:14px 16px 12px; position:sticky; top:0; z-index:2; }
+  header h1 { margin:0; font-size:1.15rem; }
+  header p { margin:2px 0 0; opacity:.8; font-size:.8rem; }
+  nav { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid #e4dccf; display:flex; padding-bottom:env(safe-area-inset-bottom); }
+  nav button { flex:1; border:0; background:none; padding:10px 0 8px; font-size:.7rem; color:#666; }
+  nav button.on { color:var(--g); font-weight:700; }
+  main { padding:12px 12px 88px; }
+  .card { background:var(--card); border-radius:14px; padding:14px; margin:0 0 10px; }
+  .card h2 { margin:0 0 8px; font-size:1rem; }
+  .muted { color:#667; font-size:.85rem; }
+  .chip { display:inline-block; background:#efe8db; border-radius:999px; padding:4px 10px; margin:0 6px 6px 0; font-size:.85rem; }
+  .chip.bad { background:#f3d7d0; color:var(--bad); }
+  table { width:100%; border-collapse:collapse; font-size:.85rem; }
+  th,td { text-align:left; padding:6px 4px; border-bottom:1px solid #efe8db; vertical-align:top; }
+  input, select, textarea { width:100%; padding:10px 12px; border:1px solid #ddd3c4; border-radius:10px; font:inherit; background:#fff; margin:0 0 8px; }
+  button.prim { background:var(--sand); border:0; border-radius:10px; padding:10px 14px; font-weight:650; }
+  label.row { display:flex; gap:10px; align-items:flex-start; padding:6px 0; }
+  input[type=checkbox] { width:20px; height:20px; accent-color:var(--g); }
+  .toast { position:fixed; left:12px; right:12px; bottom:76px; background:var(--g); color:#fff; padding:12px 14px; border-radius:12px; display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Star Desk</h1>
+  <p>Chris + Mara · not for casuals</p>
+</header>
+<main id="app"></main>
+<nav>
+  <button class="on" data-tab="day">Day</button>
+  <button data-tab="store">Store</button>
+  <button data-tab="keys">Keys</button>
+  <button data-tab="run">Run</button>
+  <button data-tab="find">Find</button>
+</nav>
+<div class="toast" id="toast"></div>
+<script src="../config.js"></script>
+<script>
+function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.style.display="block"; setTimeout(()=>t.style.display="none",2200); }
+function parseCsv(text){
+  const rows=[]; let row=[], cell="", q=false;
+  for (let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"' && text[i+1]==='"'){ cell+='"'; i++; } else if(c==='"') q=false; else cell+=c; }
+    else { if(c==='"') q=true; else if(c===','){ row.push(cell); cell=""; } else if(c==='\n'){ row.push(cell); rows.push(row); row=[]; cell=""; } else if(c!=='\r') cell+=c; }
+  }
+  if(cell||row.length){ row.push(cell); rows.push(row); }
+  return rows;
+}
+async function sheet(name){
+  const res=await fetch(window.STAR_OPS.csv(name));
+  if(!res.ok) throw new Error("sheet "+name);
+  return parseCsv(await res.text());
+}
+function dayKey(k){ return "desk-"+k+"-"+new Date().toISOString().slice(0,10); }
+const PULSE_AM = ["Open Pulse","Note departures / arrivals on paper or here","Nothing urgent pending before breakfast"];
+const PULSE_PM = ["Pulse evening check","Send ETA texts (copy from templates)","Set breakfast trays","Review tomorrow"];
+const BILLS = ["Northland Waste","Powershop","2degrees Broadband","Water / Council rates","ApparelMaster","Insurance"];
+function renderDay(){
+  const app=document.getElementById("app");
+  const d=new Date();
+  const to20 = (()=>{ const x=new Date(d.getFullYear(), d.getMonth(), 20); if(d.getDate()>20) x.setMonth(x.getMonth()+1); return Math.ceil((x-d)/86400000); })();
+  app.innerHTML=`
+    <section class="card">
+      <h2>Off-property</h2>
+      <p class="muted">Leave only if rooms guest-ready, no ETA in the next 90 minutes, Pulse clear.</p>
+    </section>
+    <section class="card">
+      <h2>Pulse AM</h2>
+      ${PULSE_AM.map((t,i)=>tick("am",i,t)).join("")}
+    </section>
+    <section class="card">
+      <h2>Pulse PM</h2>
+      ${PULSE_PM.map((t,i)=>tick("pm",i,t)).join("")}
+    </section>
+    <section class="card">
+      <h2>Anomaly</h2>
+      <p class="muted">Pulse has no API. Type it.</p>
+      <input id="g" placeholder="Guest name">
+      <select id="r"><option value="">Room</option><option>1</option><option>2</option><option>3</option></select>
+      <input id="ci" placeholder="Check-in">
+      <input id="co" placeholder="Check-out">
+      <textarea id="rq" rows="2" placeholder="Dietary, late ETA, access…"></textarea>
+      <button class="prim" id="sendA">Save to sheet</button>
+      <div id="anoms" class="muted" style="margin-top:10px">Loading anomalies…</div>
+    </section>
+    <section class="card">
+      <h2>Bills</h2>
+      <p class="muted">${to20} days to the 20th</p>
+      ${BILLS.map((t,i)=>tick("bill",i,t)).join("")}
+    </section>
+    <section class="card">
+      <h2>Templates</h2>
+      <p class="muted">ETA · copy, send from Pulse after you confirm</p>
+      <textarea readonly rows="3">Hi [name], looking forward to welcoming you tomorrow. What time are you expecting to arrive? This helps us have everything ready for you.</textarea>
+      <p class="muted">Room note</p>
+      <textarea readonly rows="2">Welcome! Your key is on the table. Make yourself at home — we'll touch base shortly.</textarea>
+      <p class="muted">Late check-in</p>
+      <textarea readonly rows="2">No problem at all — your key will be in the room and the light will be on. See you in the morning!</textarea>
+    </section>`;
+  bindTicks();
+  document.getElementById("sendA").onclick=async()=>{
+    if(!window.STAR_OPS.SCRIPT_URL){ toast("Set SCRIPT_URL in config.js"); return; }
+    const body={ action:"anomaly", guest:g.value, room:r.value, checkin:ci.value, checkout:co.value, requirements:rq.value };
+    await fetch(window.STAR_OPS.SCRIPT_URL,{ method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain"}, body:JSON.stringify(body) });
+    toast("Anomaly sent to sheet");
+    setTimeout(loadAnoms, 1200);
+  };
+  loadAnoms();
+}
+function tick(group,i,label){
+  const k=dayKey(group);
+  let arr=[]; try{ arr=JSON.parse(localStorage.getItem(k)||"[]"); }catch{}
+  return `<label class="row"><input type="checkbox" data-g="${group}" data-i="${i}" ${arr[i]?"checked":""}><span>${label}</span></label>`;
+}
+function bindTicks(){
+  document.querySelectorAll("input[data-g]").forEach(cb=>{
+    cb.onchange=()=>{
+      const k=dayKey(cb.dataset.g);
+      let arr=[]; try{ arr=JSON.parse(localStorage.getItem(k)||"[]"); }catch{}
+      arr[Number(cb.dataset.i)]=cb.checked;
+      localStorage.setItem(k, JSON.stringify(arr));
+    };
+  });
+}
+async function loadAnoms(){
+  const el=document.getElementById("anoms");
+  if(!el) return;
+  try{
+    const rows=await sheet("Anomalies");
+    const body=rows.slice(1).filter(r=>r[0]).slice(-8).reverse();
+    el.innerHTML = body.length ? body.map(r=>`<div class="chip">${r[1]||"?"} · room ${r[2]||"?"} · ${r[5]||""}</div>`).join("") : "None yet.";
+  }catch{ el.textContent="Sheet not readable yet — share the spreadsheet: Anyone with the link can view."; }
+}
+async function renderStore(){
+  const app=document.getElementById("app");
+  app.innerHTML=`<section class="card"><h2>Used-last inbox</h2><div id="inbox">Loading…</div></section>
+    <section class="card"><h2>PAR</h2><p class="muted">Counts are guesses until you walk the cupboards. Edit in the Sheet.</p><div id="par"></div></section>`;
+  try{
+    const used=await sheet("UsedLast");
+    const open=used.slice(1).filter(r=>String(r[4]||"").toLowerCase()!=="cleared" && r[1] && r[1]!=="SETUP").reverse();
+    document.getElementById("inbox").innerHTML = open.length
+      ? open.map(r=>`<div class="chip bad">${r[1]}${r[2]?" · room "+r[2]:""}</div>`).join("")
+      : "<span class='muted'>Nothing waiting.</span>";
+  }catch{ document.getElementById("inbox").textContent="Share the sheet (anyone with link can view) so Desk can read it."; }
+  try{
+    const par=await sheet("PAR");
+    const rows=par.slice(1).filter(r=>r[0]);
+    const low=rows.filter(r=>{ const min=Number(r[4]||0), oh=r[6]===""?null:Number(r[6]); return oh!==null && !Number.isNaN(oh) && oh<min; });
+    document.getElementById("par").innerHTML =
+      (low.length? `<p class="muted">Below min</p>`+low.map(r=>`<div class="chip bad">${r[0]} ${r[6]}/${r[4]}</div>`).join("") : "")+
+      `<table><thead><tr><th>Item</th><th>Where</th><th>Min</th><th>Now</th></tr></thead><tbody>`+
+      rows.map(r=>`<tr><td>${r[0]}</td><td>${r[2]||""}</td><td>${r[4]||""}</td><td>${r[6]||"—"}</td></tr>`).join("")+
+      `</tbody></table>`;
+  }catch{ document.getElementById("par").textContent="Can't read PAR tab yet."; }
+}
+async function renderKeys(){
+  const app=document.getElementById("app");
+  app.innerHTML=`<section class="card"><h2>Key register</h2><p class="muted">Copy every room key. Tag them. Hook board location still TBA.</p><div id="k">Loading…</div></section>`;
+  try{
+    const rows=(await sheet("Keys")).slice(1).filter(r=>r[0]);
+    document.getElementById("k").innerHTML=`<table><thead><tr><th>ID</th><th>Room</th><th>Type</th><th>Tag</th><th>Copies</th><th>Status</th></tr></thead><tbody>`+
+      rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[6]}</td></tr>`).join("")+
+      `</tbody></table>`;
+  }catch{ document.getElementById("k").textContent="Share the sheet to load keys."; }
+}
+function renderRun(){
+  document.getElementById("app").innerHTML=`
+    <section class="card">
+      <h2>Run the motel</h2>
+      <p class="muted">Work surface. Long memory lives in second-brain / Notion dump.</p>
+      <p><b>Check-out</b> 10:00 · <b>Check-in</b> 14:00–19:00. Fallback: key in room, light on. No lockbox.</p>
+      <p>Service on request. Toilet paper check day 2 of 3+ night stays.</p>
+      <p>Respectful absence. Older, quiet guests. Breakfast is the product.</p>
+    </section>
+    <section class="card">
+      <h2>Breakfast rotation</h2>
+      <ol>
+        <li>Soft scramble or open omelette (2 eggs) in a croissant + fruit</li>
+        <li>Ham, sunny-side egg, hollandaise on croissant + fruit</li>
+        <li>Hashbrown, bacon, poached egg, hollandaise on muffin + fruit</li>
+      </ol>
+      <p class="muted">Resets day 4. ~$5/cover. Salmon frozen for pescatarians. GF muffins frozen, 20–30 min medium oven. Never leave uncovered food at the door.</p>
+    </section>
+    <section class="card">
+      <h2>Sheets</h2>
+      <p class="muted">This page reads the spreadsheet. Writes need the Apps Script URL in config.js.</p>
+      <p><a href="https://docs.google.com/spreadsheets/d/1uEPMq9wCpCeJoga3EOTyyBKsceV9rWNxBvd8Z1UkPeU/edit" target="_blank">Open the Ops Pipe sheet</a></p>
+    </section>`;
+}
+async function renderFind(){
+  const app=document.getElementById("app");
+  app.innerHTML=`<section class="card"><input type="search" id="q" placeholder="Where is…"><div id="list"></div>
+    <p class="muted">Edit locations on the Find tab of the sheet.</p></section>`;
+  let rows=[];
+  try{ rows=(await sheet("Find")).slice(1).filter(r=>r[0]); }catch{ rows=[["Can't read sheet","Share: anyone with the link can view"]]; }
+  const draw=()=>{
+    const q=(document.getElementById("q").value||"").toLowerCase();
+    document.getElementById("list").innerHTML=rows.filter(r=>!q||(r[0]+" "+r[1]).toLowerCase().includes(q))
+      .map(r=>`<p><b>${r[0]}</b><br><span class="muted">${r[1]}</span></p>`).join("");
+  };
+  document.getElementById("q").oninput=draw; draw();
+}
+const tabs={ day:renderDay, store:renderStore, keys:renderKeys, run:renderRun, find:renderFind };
+document.querySelectorAll("nav button").forEach(b=>{
+  b.onclick=()=>{ document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); tabs[b.dataset.tab](); };
+});
+renderDay();
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
