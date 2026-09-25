@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2F4F3A">
+<title>Star Floor</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root { --g:#2F4F3A; --g2:#3d6549; --sand:#c4a574; --bg:#f6f1e8; --ink:#1c241c; --card:#fffdf8; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.4 system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:var(--g); color:#fff; padding:14px 16px 12px; position:sticky; top:0; z-index:2; }
+  header h1 { margin:0; font-size:1.15rem; font-weight:650; letter-spacing:.02em; }
+  header p { margin:2px 0 0; opacity:.8; font-size:.8rem; }
+  nav { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid #e4dccf; display:flex; padding-bottom:env(safe-area-inset-bottom); }
+  nav button { flex:1; border:0; background:none; padding:10px 0 8px; font-size:.75rem; color:#666; }
+  nav button.on { color:var(--g); font-weight:700; }
+  main { padding:12px 12px 88px; }
+  .card { background:var(--card); border-radius:14px; padding:14px; margin:0 0 10px; box-shadow:0 1px 0 #e8dfd0; }
+  .card h2 { margin:0 0 8px; font-size:1rem; }
+  .muted { color:#667; font-size:.85rem; }
+  button.prim { background:var(--sand); border:0; border-radius:10px; padding:10px 14px; font-weight:650; }
+  label.row { display:flex; gap:10px; align-items:flex-start; padding:8px 0; border-bottom:1px solid #efe8db; }
+  label.row:last-child { border-bottom:0; }
+  input[type=checkbox] { width:22px; height:22px; margin-top:2px; accent-color:var(--g); }
+  .out { display:flex; flex-wrap:wrap; gap:8px; }
+  .out button { background:var(--g); color:#fff; border:0; border-radius:999px; padding:10px 14px; }
+  .out button.sent { background:#8a9; }
+  input[type=search], select, textarea, input[type=text] {
+    width:100%; padding:10px 12px; border:1px solid #ddd3c4; border-radius:10px; font:inherit; background:#fff;
+  }
+  .find-item { padding:10px 0; border-bottom:1px solid #efe8db; }
+  .find-item b { display:block; }
+  .toast { position:fixed; left:12px; right:12px; bottom:76px; background:var(--g); color:#fff; padding:12px 14px; border-radius:12px; display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Star Floor</h1>
+  <p>Paihia Star · rooms, find, ran-out</p>
+</header>
+<main id="app"></main>
+<nav>
+  <button class="on" data-tab="rooms">Rooms</button>
+  <button data-tab="find">Find</button>
+  <button data-tab="out">Out</button>
+</nav>
+<div class="toast" id="toast"></div>
+<script src="../config.js"></script>
+<script>
+const TASKS = {
+  r2: { title:"Room 2 · studio flip", items:[
+    "Open windows / air the room",
+    "Strip beds — sheets out to laundry bag, towels/pillowcases to on-site wash",
+    "Check bathroom: toilet, basin, shower, toilet roll",
+    "Wipe kitchenette, restock coffee / tea / sugar jars",
+    "Biscuits: 2 per person for the stay",
+    "Bins out, new liner",
+    "Surfaces, remote, kettle",
+    "Floors last — get vacuum from the house only when the rest is done",
+    "Mats back in",
+    "Vacuum returns to the house. Room is ready."
+  ]},
+  r3: { title:"Room 3 · studio flip (accessible)", items:[
+    "Open windows / air the room",
+    "Strip beds — sheets out to laundry bag, towels/pillowcases to on-site wash",
+    "Check bathroom: toilet, basin, shower, toilet roll, access clear",
+    "Wipe kitchenette, restock coffee / tea / sugar jars",
+    "Biscuits: 2 per person for the stay",
+    "Bins out, new liner",
+    "Surfaces, remote, kettle",
+    "Floors last — vacuum from the house only when the rest is done",
+    "Mats back in",
+    "Vacuum returns to the house. Room is ready."
+  ]},
+  r1: { title:"Room 1 · 2BR apartment flip", items:[
+    "Open windows / air both bedrooms + lounge",
+    "Strip all beds — sheets to laundry bag",
+    "Towels and pillowcases to on-site wash (double laundry)",
+    "Bathroom: toilet, basin, glass shower enclosure + squeegee (under sink)",
+    "Toilet roll",
+    "Full kitchen wipe, restock jars and grinders",
+    "Biscuits: 2 per person for the stay",
+    "Bins out, new liners",
+    "Surfaces, remotes, kettle",
+    "Floors last — vacuum from the house only when the rest is done",
+    "Mats back in",
+    "Vacuum returns to the house. Room is ready."
+  ]},
+  grounds: { title:"Grounds check", items:[
+    "Driveway / painted parks clear",
+    "Gazebo and firepit tidy",
+    "Rubbish around units",
+    "Laundry area guest-safe",
+    "Any maintenance to tell Chris in person"
+  ]}
+};
+const FIND_FALLBACK = [
+  ["Vacuum","Main house. Return it when the room is done."],
+  ["Towels","Laundry shelf"],
+  ["Sheets","House hall / ApparelMaster bag"],
+  ["Toilet rolls","Linen cupboard, second shelf"],
+  ["Light bulbs","House hall drawer"],
+  ["Batteries","House hall drawer"],
+  ["Room 1 squeegee","Under Room 1 bathroom sink"],
+  ["Cleaning caddy","Laundry"],
+  ["Guest keys","Key board — ask Chris"]
+];
+const OUT_ITEMS = ["Toilet rolls","Paper towels","Towels","Sheets","Tea towels","Light bulbs","Batteries","Hand soap","Dishwash liquid","Bin bags","Coffee","Teabags","Sugar","Biscuits"];
+function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.style.display="block"; setTimeout(()=>t.style.display="none",2200); }
+function keyFor(list){ return "floor-"+list+"-"+new Date().toISOString().slice(0,10); }
+function loadTicks(list){ try{ return JSON.parse(localStorage.getItem(keyFor(list))||"[]"); }catch{ return []; } }
+function saveTicks(list, arr){ localStorage.setItem(keyFor(list), JSON.stringify(arr)); }
+function renderRooms(){
+  const app=document.getElementById("app");
+  app.innerHTML = Object.entries(TASKS).map(([id,pack])=>{
+    const ticks=loadTicks(id);
+    const n=pack.items.length;
+    const d=ticks.filter(Boolean).length;
+    return `<section class="card" data-list="${id}">
+      <h2>${pack.title}</h2>
+      <p class="muted">${d}/${n} · show Chris the room, not the phone</p>
+      ${pack.items.map((t,i)=>`<label class="row"><input type="checkbox" data-i="${i}" ${ticks[i]?"checked":""}><span>${t}</span></label>`).join("")}
+    </section>`;
+  }).join("");
+  app.querySelectorAll("input[type=checkbox]").forEach(cb=>{
+    cb.onchange=()=>{
+      const list=cb.closest("[data-list]").dataset.list;
+      const ticks=loadTicks(list);
+      ticks[Number(cb.dataset.i)]=cb.checked;
+      saveTicks(list,ticks);
+      const pack=TASKS[list];
+      const d=ticks.filter(Boolean).length;
+      cb.closest(".card").querySelector(".muted").textContent=d+"/"+pack.items.length+" · show Chris the room, not the phone";
+    };
+  });
+}
+function parseCsv(text){
+  const rows=[]; let row=[], cell="", q=false;
+  for (let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"' && text[i+1]==='"'){ cell+='"'; i++; } else if(c==='"') q=false; else cell+=c; }
+    else { if(c==='"') q=true; else if(c===','){ row.push(cell); cell=""; } else if(c==='\n'){ row.push(cell); rows.push(row); row=[]; cell=""; } else if(c!=='\r') cell+=c; }
+  }
+  if(cell||row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+async function renderFind(){
+  const app=document.getElementById("app");
+  app.innerHTML=`<div class="card"><input type="search" id="q" placeholder="Where is…"><div id="list"></div></div>`;
+  let rows=FIND_FALLBACK;
+  try{
+    const res=await fetch(window.STAR_OPS.csv("Find"));
+    if(res.ok){ const t=await res.text(); const all=parseCsv(t).slice(1).filter(r=>r[0]); if(all.length) rows=all; }
+  }catch{}
+  const draw=()=>{
+    const q=(document.getElementById("q").value||"").toLowerCase();
+    document.getElementById("list").innerHTML=rows.filter(r=>!q||(r[0]+" "+r[1]).toLowerCase().includes(q))
+      .map(r=>`<div class="find-item"><b>${r[0]}</b><span class="muted">${r[1]}</span></div>`).join("")||"<p class='muted'>Nothing matches.</p>";
+  };
+  document.getElementById("q").oninput=draw; draw();
+}
+function renderOut(){
+  const app=document.getElementById("app");
+  const url=window.STAR_OPS && window.STAR_OPS.SCRIPT_URL;
+  app.innerHTML=`<section class="card">
+    <h2>Used the last one</h2>
+    <p class="muted">${url ? "Sends to Chris’s sheet. Needs Wi‑Fi." : "Script URL not set yet — tap will fail until config.js has SCRIPT_URL."}</p>
+    <p class="muted" style="margin-top:8px">Room (optional)</p>
+    <select id="room"><option value="">Not sure</option><option>1</option><option>2</option><option>3</option></select>
+    <div class="out" style="margin-top:12px">${OUT_ITEMS.map(i=>`<button data-item="${i}">${i}</button>`).join("")}</div>
+  </section>`;
+  app.querySelectorAll(".out button").forEach(b=>{
+    b.onclick=async()=>{
+      if(!window.STAR_OPS.SCRIPT_URL){ toast("No script URL yet"); return; }
+      b.disabled=true;
+      try{
+        await fetch(window.STAR_OPS.SCRIPT_URL, {
+          method:"POST",
+          mode:"no-cors",
+          headers:{"Content-Type":"text/plain"},
+          body: JSON.stringify({ action:"usedLast", item:b.dataset.item, room:document.getElementById("room").value })
+        });
+        b.classList.add("sent"); toast("Sent: "+b.dataset.item);
+      }catch{ toast("Failed — get onto Wi‑Fi"); }
+      b.disabled=false;
+    };
+  });
+}
+const tabs={ rooms:renderRooms, find:renderFind, out:renderOut };
+document.querySelectorAll("nav button").forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on"); tabs[b.dataset.tab]();
+  };
+});
+renderRooms();
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
