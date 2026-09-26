@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#2F4F3A">
-<meta http-equiv="Cache-Control" content="no-cache">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Star Floor</title>
 <style>
-  :root { --g:#2F4F3A; --sand:#c4a574; --bg:#f6f1e8; --ink:#1c241c; --card:#fffdf8; }
+  :root { --g:#2F4F3A; --bg:#f6f1e8; --ink:#1c241c; --card:#fffdf8; }
   * { box-sizing:border-box; }
   body { margin:0; font:16px/1.4 system-ui,sans-serif; background:var(--bg); color:var(--ink); }
   header { background:var(--g); color:#fff; padding:14px 16px 12px; position:sticky; top:0; z-index:2; }
@@ -52,6 +52,20 @@
   <button data-tab="out">Out</button>
 </nav>
 <div class="toast" id="toast"></div>
+<script>
+window.STAR_OPS = window.STAR_OPS || {
+  SHEET_ID: '1uEPMq9wCpCeJoga3EOTyyBKsceV9rWNxBvd8Z1UkPeU',
+  SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwf1vIva6uawvUu3amCiEa8Y9muzfdkUojRF0oyTAy9-_YVN77LQ8cyyxHdZM-x919C/exec',
+  csv: function (sheetName) {
+    return 'https://docs.google.com/spreadsheets/d/' + this.SHEET_ID +
+      '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(sheetName);
+  }
+};
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+  if (window.caches) caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+}
+</script>
 <script src="../config.js"></script>
 <script>
 const STUDIO = [
@@ -74,27 +88,8 @@ const STUDIO = [
   "Vacuum",
   "Bring mats back in"
 ];
-const APT = [
-  "Strip bedding",
-  "Sheets to pick-up bag",
-  "Towels, pillowcases and shower curtain to in-house laundry",
-  "Take mats outside to air — bathroom, kitchen, entrance",
-  "Jif and hot water in sink — wipe: countertops, side tables, dining table, fridge shelves, microwave interior, cupboard shelves",
-  "Bathroom vanity",
-  "Bathroom mirror",
-  "Shower glass",
-  "Towel rack",
-  "Boil kettle — spray toilet, pour boiled water, wipe and dry",
-  "Top up soaps, shampoo, conditioner, toilet paper",
-  "Make bed/s",
-  "Dress room — pillowcases, coverlets, towels in rack, dish cloth, tea towel, kitchen hand towel, shower mat",
-  "Hang fresh shower curtain",
-  "Check consumables — teabags, coffee, sugar, biscuits, milk",
-  "Boil kettle — Jif and antiseptic in mop bucket",
-  "Mop floors — flood mop then regular mop bathroom / regular mop kitchen and entry",
-  "Vacuum",
-  "Bring mats back in"
-];
+const APT = STUDIO.slice();
+APT.splice(7, 0, "Shower glass");
 const TASKS = {
   r2: { short:"2", title:"Room 2 · Studio", items:STUDIO },
   r3: { short:"3", title:"Room 3 · Studio", items:STUDIO },
@@ -149,8 +144,6 @@ function renderRooms(id){
       const ticks=loadTicks(id);
       ticks[Number(cb.dataset.i)]=cb.checked;
       saveTicks(id,ticks);
-      const n=ticks.filter(Boolean).length;
-      document.querySelector(".count").textContent=n+"/"+pack.items.length+" · show Chris the finished room";
       renderRooms(id);
     };
   });
@@ -185,7 +178,7 @@ function renderOut(){
   const url=window.STAR_OPS && window.STAR_OPS.SCRIPT_URL;
   app.innerHTML=`<section class="card">
     <h2>Used the last one</h2>
-    <p class="muted">${url ? "Sends to Chris’s sheet. Needs Wi‑Fi." : "Script URL not set yet — tap will fail until config.js has SCRIPT_URL."}</p>
+    <p class="muted">${url ? "Sends to Chris’s sheet. Needs Wi‑Fi." : "Script URL not set yet."}</p>
     <p class="muted" style="margin-top:8px">Room (optional)</p>
     <select id="room"><option value="">Not sure</option><option>1</option><option>2</option><option>3</option></select>
     <div class="out" style="margin-top:12px">${OUT_ITEMS.map(i=>`<button data-item="${i}">${i}</button>`).join("")}</div>
