@@ -17,10 +17,20 @@
   nav button { flex:1; border:0; background:none; padding:10px 0 8px; font-size:.75rem; color:#666; }
   nav button.on { color:var(--g); font-weight:700; }
   main { padding:12px 12px 88px; }
-  .card { background:var(--card); border-radius:14px; padding:14px; margin:0 0 10px; box-shadow:0 1px 0 #e8dfd0; }
-  .card h2 { margin:0 0 8px; font-size:1rem; }
+  .jumps { display:flex; gap:8px; margin:0 0 12px; }
+  .jumps button {
+    flex:1; border:0; border-radius:12px; padding:12px 6px; background:#fff; color:var(--ink);
+    font-weight:700; font-size:.85rem; box-shadow:0 1px 0 #e8dfd0;
+  }
+  .jumps button.on { background:var(--g); color:#fff; }
+  .card { background:var(--card); border-radius:14px; padding:0; margin:0 0 10px; box-shadow:0 1px 0 #e8dfd0; overflow:hidden; }
+  .card.head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px; cursor:pointer; }
+  .card h2 { margin:0; font-size:1rem; }
+  .card .chev { color:#889; font-size:1.1rem; }
+  .card.open .chev { transform:rotate(90deg); }
   .muted { color:#667; font-size:.85rem; }
-  button.prim { background:var(--sand); border:0; border-radius:10px; padding:10px 14px; font-weight:650; }
+  .body { display:none; padding:0 14px 12px; }
+  .card.open .body { display:block; }
   label.row { display:flex; gap:10px; align-items:flex-start; padding:8px 0; border-bottom:1px solid #efe8db; }
   label.row:last-child { border-bottom:0; }
   input[type=checkbox] { width:22px; height:22px; margin-top:2px; accent-color:var(--g); }
@@ -91,10 +101,10 @@ const APT = [
   "Bring mats back in"
 ];
 const TASKS = {
-  r2: { title:"Room 2 · Studio", items:STUDIO },
-  r3: { title:"Room 3 · Studio", items:STUDIO },
-  r1: { title:"Room 1 · 2BR", items:APT },
-  grounds: { title:"Grounds", items:[
+  r2: { short:"2", title:"Room 2 · Studio", items:STUDIO },
+  r3: { short:"3", title:"Room 3 · Studio", items:STUDIO },
+  r1: { short:"1", title:"Room 1 · 2BR", items:APT },
+  grounds: { short:"Yard", title:"Grounds", items:[
     "Clear paths of leaves / debris",
     "Check carpark area",
     "Mow and edge lawns",
@@ -121,18 +131,50 @@ function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.
 function keyFor(list){ return "floor-"+list+"-"+new Date().toISOString().slice(0,10); }
 function loadTicks(list){ try{ return JSON.parse(localStorage.getItem(keyFor(list))||"[]"); }catch{ return []; } }
 function saveTicks(list, arr){ localStorage.setItem(keyFor(list), JSON.stringify(arr)); }
+function openList(id){
+  sessionStorage.setItem("floor-open", id);
+  document.querySelectorAll(".card[data-list]").forEach(c=>c.classList.toggle("open", c.dataset.list===id));
+  document.querySelectorAll(".jumps button").forEach(b=>b.classList.toggle("on", b.dataset.go===id));
+  const el=document.querySelector('.card[data-list="'+id+'"]');
+  if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
+}
 function renderRooms(){
   const app=document.getElementById("app");
-  app.innerHTML = Object.entries(TASKS).map(([id,pack])=>{
+  const open = sessionStorage.getItem("floor-open") || "r2";
+  const jumps = Object.entries(TASKS).map(([id,pack])=>{
+    const ticks=loadTicks(id);
+    const d=ticks.filter(Boolean).length;
+    return `<button data-go="${id}" class="${id===open?"on":""}">${pack.short}<br><span class="muted" style="font-weight:500;color:inherit;opacity:.75">${d}/${pack.items.length}</span></button>`;
+  }).join("");
+  const cards = Object.entries(TASKS).map(([id,pack])=>{
     const ticks=loadTicks(id);
     const n=pack.items.length;
     const d=ticks.filter(Boolean).length;
-    return `<section class="card" data-list="${id}">
-      <h2>${pack.title}</h2>
-      <p class="muted">${d}/${n} · show Chris the finished room</p>
-      ${pack.items.map((t,i)=>`<label class="row"><input type="checkbox" data-i="${i}" ${ticks[i]?"checked":""}><span>${t}</span></label>`).join("")}
+    return `<section class="card ${id===open?"open":""}" data-list="${id}">
+      <div class="head">
+        <div>
+          <h2>${pack.title}</h2>
+          <p class="muted count">${d}/${n} · show Chris the finished room</p>
+        </div>
+        <span class="chev">›</span>
+      </div>
+      <div class="body">
+        ${pack.items.map((t,i)=>`<label class="row"><input type="checkbox" data-i="${i}" ${ticks[i]?"checked":""}><span>${t}</span></label>`).join("")}
+      </div>
     </section>`;
   }).join("");
+  app.innerHTML = `<div class="jumps">${jumps}</div>${cards}`;
+  app.querySelectorAll(".jumps button").forEach(b=>b.onclick=()=>openList(b.dataset.go));
+  app.querySelectorAll(".card .head").forEach(h=>{
+    h.onclick=()=>{
+      const id=h.parentElement.dataset.list;
+      if(h.parentElement.classList.contains("open")) {
+        h.parentElement.classList.remove("open");
+        sessionStorage.removeItem("floor-open");
+        document.querySelectorAll(".jumps button").forEach(b=>b.classList.remove("on"));
+      } else openList(id);
+    };
+  });
   app.querySelectorAll("input[type=checkbox]").forEach(cb=>{
     cb.onchange=()=>{
       const list=cb.closest("[data-list]").dataset.list;
@@ -141,7 +183,9 @@ function renderRooms(){
       saveTicks(list,ticks);
       const pack=TASKS[list];
       const d=ticks.filter(Boolean).length;
-      cb.closest(".card").querySelector(".muted").textContent=d+"/"+pack.items.length+" · show Chris the finished room";
+      cb.closest(".card").querySelector(".count").textContent=d+"/"+pack.items.length+" · show Chris the finished room";
+      const jump=document.querySelector('.jumps button[data-go="'+list+'"]');
+      if(jump) jump.innerHTML=pack.short+'<br><span class="muted" style="font-weight:500;color:inherit;opacity:.75">'+d+'/'+pack.items.length+'</span>';
     };
   });
 }
@@ -157,7 +201,7 @@ function parseCsv(text){
 }
 async function renderFind(){
   const app=document.getElementById("app");
-  app.innerHTML=`<div class="card"><input type="search" id="q" placeholder="Where is…"><div id="list"></div></div>`;
+  app.innerHTML=`<div class="card" style="padding:14px"><input type="search" id="q" placeholder="Where is…"><div id="list"></div></div>`;
   let rows=FIND_FALLBACK;
   try{
     const res=await fetch(window.STAR_OPS.csv("Find"));
@@ -173,8 +217,8 @@ async function renderFind(){
 function renderOut(){
   const app=document.getElementById("app");
   const url=window.STAR_OPS && window.STAR_OPS.SCRIPT_URL;
-  app.innerHTML=`<section class="card">
-    <h2>Used the last one</h2>
+  app.innerHTML=`<section class="card" style="padding:14px">
+    <h2 style="margin:0 0 8px">Used the last one</h2>
     <p class="muted">${url ? "Sends to Chris’s sheet. Needs Wi‑Fi." : "Script URL not set yet — tap will fail until config.js has SCRIPT_URL."}</p>
     <p class="muted" style="margin-top:8px">Room (optional)</p>
     <select id="room"><option value="">Not sure</option><option>1</option><option>2</option><option>3</option></select>
