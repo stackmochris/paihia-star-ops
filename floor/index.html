@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#2F4F3A">
+<meta http-equiv="Cache-Control" content="no-cache">
 <title>Star Floor</title>
-<link rel="manifest" href="manifest.json">
 <style>
-  :root { --g:#2F4F3A; --g2:#3d6549; --sand:#c4a574; --bg:#f6f1e8; --ink:#1c241c; --card:#fffdf8; }
+  :root { --g:#2F4F3A; --sand:#c4a574; --bg:#f6f1e8; --ink:#1c241c; --card:#fffdf8; }
   * { box-sizing:border-box; }
   body { margin:0; font:16px/1.4 system-ui,sans-serif; background:var(--bg); color:var(--ink); }
   header { background:var(--g); color:#fff; padding:14px 16px 12px; position:sticky; top:0; z-index:2; }
-  header h1 { margin:0; font-size:1.15rem; font-weight:650; letter-spacing:.02em; }
+  header h1 { margin:0; font-size:1.15rem; font-weight:650; }
   header p { margin:2px 0 0; opacity:.8; font-size:.8rem; }
   nav { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid #e4dccf; display:flex; padding-bottom:env(safe-area-inset-bottom); }
   nav button { flex:1; border:0; background:none; padding:10px 0 8px; font-size:.75rem; color:#666; }
@@ -23,21 +23,16 @@
     font-weight:700; font-size:.85rem; box-shadow:0 1px 0 #e8dfd0;
   }
   .jumps button.on { background:var(--g); color:#fff; }
-  .card { background:var(--card); border-radius:14px; padding:0; margin:0 0 10px; box-shadow:0 1px 0 #e8dfd0; overflow:hidden; }
-  .card.head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px; cursor:pointer; }
-  .card h2 { margin:0; font-size:1rem; }
-  .card .chev { color:#889; font-size:1.1rem; }
-  .card.open .chev { transform:rotate(90deg); }
+  .card { background:var(--card); border-radius:14px; padding:14px; margin:0; box-shadow:0 1px 0 #e8dfd0; }
+  .card h2 { margin:0 0 4px; font-size:1rem; }
   .muted { color:#667; font-size:.85rem; }
-  .body { display:none; padding:0 14px 12px; }
-  .card.open .body { display:block; }
   label.row { display:flex; gap:10px; align-items:flex-start; padding:8px 0; border-bottom:1px solid #efe8db; }
   label.row:last-child { border-bottom:0; }
   input[type=checkbox] { width:22px; height:22px; margin-top:2px; accent-color:var(--g); }
   .out { display:flex; flex-wrap:wrap; gap:8px; }
   .out button { background:var(--g); color:#fff; border:0; border-radius:999px; padding:10px 14px; }
   .out button.sent { background:#8a9; }
-  input[type=search], select, textarea, input[type=text] {
+  input[type=search], select {
     width:100%; padding:10px 12px; border:1px solid #ddd3c4; border-radius:10px; font:inherit; background:#fff;
   }
   .find-item { padding:10px 0; border-bottom:1px solid #efe8db; }
@@ -131,61 +126,32 @@ function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.
 function keyFor(list){ return "floor-"+list+"-"+new Date().toISOString().slice(0,10); }
 function loadTicks(list){ try{ return JSON.parse(localStorage.getItem(keyFor(list))||"[]"); }catch{ return []; } }
 function saveTicks(list, arr){ localStorage.setItem(keyFor(list), JSON.stringify(arr)); }
-function openList(id){
+function renderRooms(id){
+  id = id || sessionStorage.getItem("floor-open") || "r2";
   sessionStorage.setItem("floor-open", id);
-  document.querySelectorAll(".card[data-list]").forEach(c=>c.classList.toggle("open", c.dataset.list===id));
-  document.querySelectorAll(".jumps button").forEach(b=>b.classList.toggle("on", b.dataset.go===id));
-  const el=document.querySelector('.card[data-list="'+id+'"]');
-  if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
-}
-function renderRooms(){
-  const app=document.getElementById("app");
-  const open = sessionStorage.getItem("floor-open") || "r2";
-  const jumps = Object.entries(TASKS).map(([id,pack])=>{
-    const ticks=loadTicks(id);
-    const d=ticks.filter(Boolean).length;
-    return `<button data-go="${id}" class="${id===open?"on":""}">${pack.short}<br><span class="muted" style="font-weight:500;color:inherit;opacity:.75">${d}/${pack.items.length}</span></button>`;
+  const pack = TASKS[id];
+  const ticks = loadTicks(id);
+  const d = ticks.filter(Boolean).length;
+  const jumps = Object.entries(TASKS).map(([k,p])=>{
+    const n=loadTicks(k).filter(Boolean).length;
+    return `<button data-go="${k}" class="${k===id?"on":""}">${p.short}<br><span style="font-weight:500;opacity:.75">${n}/${p.items.length}</span></button>`;
   }).join("");
-  const cards = Object.entries(TASKS).map(([id,pack])=>{
-    const ticks=loadTicks(id);
-    const n=pack.items.length;
-    const d=ticks.filter(Boolean).length;
-    return `<section class="card ${id===open?"open":""}" data-list="${id}">
-      <div class="head">
-        <div>
-          <h2>${pack.title}</h2>
-          <p class="muted count">${d}/${n} · show Chris the finished room</p>
-        </div>
-        <span class="chev">›</span>
-      </div>
-      <div class="body">
-        ${pack.items.map((t,i)=>`<label class="row"><input type="checkbox" data-i="${i}" ${ticks[i]?"checked":""}><span>${t}</span></label>`).join("")}
-      </div>
+  document.getElementById("app").innerHTML = `
+    <div class="jumps">${jumps}</div>
+    <section class="card" data-list="${id}">
+      <h2>${pack.title}</h2>
+      <p class="muted count">${d}/${pack.items.length} · show Chris the finished room</p>
+      ${pack.items.map((t,i)=>`<label class="row"><input type="checkbox" data-i="${i}" ${ticks[i]?"checked":""}><span>${t}</span></label>`).join("")}
     </section>`;
-  }).join("");
-  app.innerHTML = `<div class="jumps">${jumps}</div>${cards}`;
-  app.querySelectorAll(".jumps button").forEach(b=>b.onclick=()=>openList(b.dataset.go));
-  app.querySelectorAll(".card .head").forEach(h=>{
-    h.onclick=()=>{
-      const id=h.parentElement.dataset.list;
-      if(h.parentElement.classList.contains("open")) {
-        h.parentElement.classList.remove("open");
-        sessionStorage.removeItem("floor-open");
-        document.querySelectorAll(".jumps button").forEach(b=>b.classList.remove("on"));
-      } else openList(id);
-    };
-  });
-  app.querySelectorAll("input[type=checkbox]").forEach(cb=>{
+  document.querySelectorAll(".jumps button").forEach(b=>b.onclick=()=>renderRooms(b.dataset.go));
+  document.querySelectorAll("input[type=checkbox]").forEach(cb=>{
     cb.onchange=()=>{
-      const list=cb.closest("[data-list]").dataset.list;
-      const ticks=loadTicks(list);
+      const ticks=loadTicks(id);
       ticks[Number(cb.dataset.i)]=cb.checked;
-      saveTicks(list,ticks);
-      const pack=TASKS[list];
-      const d=ticks.filter(Boolean).length;
-      cb.closest(".card").querySelector(".count").textContent=d+"/"+pack.items.length+" · show Chris the finished room";
-      const jump=document.querySelector('.jumps button[data-go="'+list+'"]');
-      if(jump) jump.innerHTML=pack.short+'<br><span class="muted" style="font-weight:500;color:inherit;opacity:.75">'+d+'/'+pack.items.length+'</span>';
+      saveTicks(id,ticks);
+      const n=ticks.filter(Boolean).length;
+      document.querySelector(".count").textContent=n+"/"+pack.items.length+" · show Chris the finished room";
+      renderRooms(id);
     };
   });
 }
@@ -201,7 +167,7 @@ function parseCsv(text){
 }
 async function renderFind(){
   const app=document.getElementById("app");
-  app.innerHTML=`<div class="card" style="padding:14px"><input type="search" id="q" placeholder="Where is…"><div id="list"></div></div>`;
+  app.innerHTML=`<div class="card"><input type="search" id="q" placeholder="Where is…"><div id="list"></div></div>`;
   let rows=FIND_FALLBACK;
   try{
     const res=await fetch(window.STAR_OPS.csv("Find"));
@@ -217,8 +183,8 @@ async function renderFind(){
 function renderOut(){
   const app=document.getElementById("app");
   const url=window.STAR_OPS && window.STAR_OPS.SCRIPT_URL;
-  app.innerHTML=`<section class="card" style="padding:14px">
-    <h2 style="margin:0 0 8px">Used the last one</h2>
+  app.innerHTML=`<section class="card">
+    <h2>Used the last one</h2>
     <p class="muted">${url ? "Sends to Chris’s sheet. Needs Wi‑Fi." : "Script URL not set yet — tap will fail until config.js has SCRIPT_URL."}</p>
     <p class="muted" style="margin-top:8px">Room (optional)</p>
     <select id="room"><option value="">Not sure</option><option>1</option><option>2</option><option>3</option></select>
@@ -241,7 +207,7 @@ function renderOut(){
     };
   });
 }
-const tabs={ rooms:renderRooms, find:renderFind, out:renderOut };
+const tabs={ rooms:()=>renderRooms(), find:renderFind, out:renderOut };
 document.querySelectorAll("nav button").forEach(b=>{
   b.onclick=()=>{
     document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));
@@ -249,7 +215,6 @@ document.querySelectorAll("nav button").forEach(b=>{
   };
 });
 renderRooms();
-if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>
 </html>
