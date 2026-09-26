@@ -49,51 +49,60 @@
 <div class="toast" id="toast"></div>
 <script src="../config.js"></script>
 <script>
+const STUDIO = [
+  "Strip bedding",
+  "Sheets to pick-up bag",
+  "Towels, pillowcases and shower curtain to in-house laundry",
+  "Take mats outside to air — bathroom, kitchen, entrance",
+  "Jif and hot water in sink — wipe: countertops, side tables, dining table, fridge shelves, microwave interior, cupboard shelves",
+  "Bathroom vanity",
+  "Bathroom mirror",
+  "Towel rack",
+  "Boil kettle — spray toilet, pour boiled water, wipe and dry",
+  "Top up soaps, shampoo, conditioner, toilet paper",
+  "Make bed/s",
+  "Dress room — pillowcases, coverlets, towels in rack, dish cloth, tea towel, kitchen hand towel, shower mat",
+  "Hang fresh shower curtain",
+  "Check consumables — teabags, coffee, sugar, biscuits, milk",
+  "Boil kettle — Jif and antiseptic in mop bucket",
+  "Mop floors — flood mop then regular mop bathroom / regular mop kitchen and entry",
+  "Vacuum",
+  "Bring mats back in"
+];
+const APT = [
+  "Strip bedding",
+  "Sheets to pick-up bag",
+  "Towels, pillowcases and shower curtain to in-house laundry",
+  "Take mats outside to air — bathroom, kitchen, entrance",
+  "Jif and hot water in sink — wipe: countertops, side tables, dining table, fridge shelves, microwave interior, cupboard shelves",
+  "Bathroom vanity",
+  "Bathroom mirror",
+  "Shower glass",
+  "Towel rack",
+  "Boil kettle — spray toilet, pour boiled water, wipe and dry",
+  "Top up soaps, shampoo, conditioner, toilet paper",
+  "Make bed/s",
+  "Dress room — pillowcases, coverlets, towels in rack, dish cloth, tea towel, kitchen hand towel, shower mat",
+  "Hang fresh shower curtain",
+  "Check consumables — teabags, coffee, sugar, biscuits, milk",
+  "Boil kettle — Jif and antiseptic in mop bucket",
+  "Mop floors — flood mop then regular mop bathroom / regular mop kitchen and entry",
+  "Vacuum",
+  "Bring mats back in"
+];
 const TASKS = {
-  r2: { title:"Room 2 · studio flip", items:[
-    "Open windows / air the room",
-    "Strip beds — sheets out to laundry bag, towels/pillowcases to on-site wash",
-    "Check bathroom: toilet, basin, shower, toilet roll",
-    "Wipe kitchenette, restock coffee / tea / sugar jars",
-    "Biscuits: 2 per person for the stay",
-    "Bins out, new liner",
-    "Surfaces, remote, kettle",
-    "Floors last — get vacuum from the house only when the rest is done",
-    "Mats back in",
-    "Vacuum returns to the house. Room is ready."
-  ]},
-  r3: { title:"Room 3 · studio flip (accessible)", items:[
-    "Open windows / air the room",
-    "Strip beds — sheets out to laundry bag, towels/pillowcases to on-site wash",
-    "Check bathroom: toilet, basin, shower, toilet roll, access clear",
-    "Wipe kitchenette, restock coffee / tea / sugar jars",
-    "Biscuits: 2 per person for the stay",
-    "Bins out, new liner",
-    "Surfaces, remote, kettle",
-    "Floors last — vacuum from the house only when the rest is done",
-    "Mats back in",
-    "Vacuum returns to the house. Room is ready."
-  ]},
-  r1: { title:"Room 1 · 2BR apartment flip", items:[
-    "Open windows / air both bedrooms + lounge",
-    "Strip all beds — sheets to laundry bag",
-    "Towels and pillowcases to on-site wash (double laundry)",
-    "Bathroom: toilet, basin, glass shower enclosure + squeegee (under sink)",
-    "Toilet roll",
-    "Full kitchen wipe, restock jars and grinders",
-    "Biscuits: 2 per person for the stay",
-    "Bins out, new liners",
-    "Surfaces, remotes, kettle",
-    "Floors last — vacuum from the house only when the rest is done",
-    "Mats back in",
-    "Vacuum returns to the house. Room is ready."
-  ]},
-  grounds: { title:"Grounds check", items:[
-    "Driveway / painted parks clear",
-    "Gazebo and firepit tidy",
-    "Rubbish around units",
-    "Laundry area guest-safe",
-    "Any maintenance to tell Chris in person"
+  r2: { title:"Room 2 · Studio", items:STUDIO },
+  r3: { title:"Room 3 · Studio", items:STUDIO },
+  r1: { title:"Room 1 · 2BR", items:APT },
+  grounds: { title:"Grounds", items:[
+    "Clear paths of leaves / debris",
+    "Check carpark area",
+    "Mow and edge lawns",
+    "Water plants if needed",
+    "Empty outdoor bin if needed",
+    "Check letterbox",
+    "Inspect exterior of all units for issues",
+    "Note any maintenance tasks — waterblasting, paint touch-ups, tree pruning, etc."
   ]}
 };
 const FIND_FALLBACK = [
@@ -120,7 +129,7 @@ function renderRooms(){
     const d=ticks.filter(Boolean).length;
     return `<section class="card" data-list="${id}">
       <h2>${pack.title}</h2>
-      <p class="muted">${d}/${n} · show Chris the room, not the phone</p>
+      <p class="muted">${d}/${n} · show Chris the finished room</p>
       ${pack.items.map((t,i)=>`<label class="row"><input type="checkbox" data-i="${i}" ${ticks[i]?"checked":""}><span>${t}</span></label>`).join("")}
     </section>`;
   }).join("");
@@ -132,7 +141,7 @@ function renderRooms(){
       saveTicks(list,ticks);
       const pack=TASKS[list];
       const d=ticks.filter(Boolean).length;
-      cb.closest(".card").querySelector(".muted").textContent=d+"/"+pack.items.length+" · show Chris the room, not the phone";
+      cb.closest(".card").querySelector(".muted").textContent=d+"/"+pack.items.length+" · show Chris the finished room";
     };
   });
 }
