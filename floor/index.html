@@ -69,27 +69,28 @@ if ('serviceWorker' in navigator) {
 <script src="../config.js"></script>
 <script>
 const STUDIO = [
-  "Strip bedding",
+  "Strip beds — set duvets and pillows aside, collect laundry",
   "Sheets to pick-up bag",
   "Towels, pillowcases and shower curtain to in-house laundry",
   "Take mats outside to air — bathroom, kitchen, entrance",
-  "Jif and hot water in sink — wipe: countertops, side tables, dining table, fridge shelves, microwave interior, cupboard shelves",
+  "Jif and hot water in sink — wipe kitchenette, dining table, two bedside tables, side table, two shelves, fridge shelves, microwave interior, cupboard shelves; clear microwave and fridge while wiping",
+  "Empty and rebag kitchen and bathroom bins",
   "Bathroom vanity",
   "Bathroom mirror",
   "Towel rack",
-  "Boil kettle — spray toilet, pour boiled water, wipe and dry",
-  "Top up soaps, shampoo, conditioner, toilet paper",
-  "Make bed/s",
-  "Dress room — pillowcases, coverlets, towels in rack, dish cloth, tea towel, kitchen hand towel, shower mat",
+  "Boil kettle — spray toilet, vanity and bowl, pour boiled water, wipe and dry",
+  "Top up soaps, shampoo, conditioner, body wash, toilet paper",
+  "Make bed — bottom sheet, top sheet overhang folded over duvet, fitted duvet, two large white pillows, two coloured accent pillows, matching throw",
+  "Dress room — bathroom cabinet: two white bath, two white hand, one white and one coloured face cloth, one white and one coloured floor towel (colours matched); dish cloth, tea towel, kitchen hand towel, shower mat",
   "Hang fresh shower curtain",
-  "Check consumables — teabags, coffee, sugar, biscuits, milk",
-  "Boil kettle — Jif and antiseptic in mop bucket",
-  "Mop floors — flood mop then regular mop bathroom / regular mop kitchen and entry",
-  "Vacuum",
+  "Check consumables — instant coffee, raw sugar, tea bags, four cookies for two guests, milk in fridge",
+  "Boil kettle — five litres boiling into mop bucket, sit a minute; Jif and antiseptic",
+  "Mop floors — flood mop then regular mop bathroom / regular mop kitchenette and tiled entry",
+  "Vacuum carpet",
   "Bring mats back in"
 ];
 const APT = STUDIO.slice();
-APT.splice(7, 0, "Shower glass");
+APT.splice(8, 0, "Shower glass");
 const TASKS = {
   r2: { short:"2", title:"Room 2 · Studio", items:STUDIO },
   r3: { short:"3", title:"Room 3 · Studio", items:STUDIO },
