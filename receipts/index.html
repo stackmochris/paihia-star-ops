@@ -411,7 +411,7 @@ if ('serviceWorker' in navigator) {
       const r = await api('recent', { n: 25 });
       html += (r.rows || []).map(w => `<div class="item"><div class="top"><b>${esc(w.category || 'Uncategorised')}</b><span>${esc(fmtAmt(w.amount))}</span></div>
         <span class="muted">${esc(w.captured)} · ${esc(w.entity)}${w.cash ? ' · cash' : ''}${w.note ? ' · ' + esc(w.note) : ''}</span>
-        <div><span class="badge">${esc(w.status || 'Captured')}</span> ${w.link ? `<a href="${esc(w.link)}" target="_blank" rel="noopener" class="muted">open</a>` : ''}</div></div>`).join('')
+        <div><span class="badge">${esc(w.status || 'Captured')}</span> ${w.link ? `<a href="${esc(w.link)}" target="_blank" rel="noopener" class="muted">open</a>` : ''} ${w.id ? `<button class="link" data-del="${esc(w.id)}">Delete</button>` : ''}</div></div>`).join('')
         || '';
       if (!html) html = '<p class="muted">Nothing yet.</p>';
     } catch (e) {
@@ -419,6 +419,12 @@ if ('serviceWorker' in navigator) {
       html += `<p class="muted">Can’t load history: ${esc(e.message)}</p>`;
     }
     box.innerHTML = html;
+    box.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      if (!confirm('Delete this receipt? The photo goes to the Drive bin and the sheet row is removed.')) return;
+      b.disabled = true;
+      try { await api('delete', { id: b.dataset.del }); renderRecent(); }
+      catch (e) { b.disabled = false; alert('Could not delete: ' + e.message); }
+    });
     box.querySelectorAll('[data-discard]').forEach(b => b.onclick = async () => {
       if (confirm('Discard this queued receipt? The photo is lost.')) { await qDel(b.dataset.discard); refreshQ(); renderRecent(); }
     });

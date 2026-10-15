@@ -6,7 +6,7 @@
  * See DEPLOY.md for the click-by-click version.
  *
  * Actions (POST, text/plain JSON body, every call carries the PIN):
- *   ping, categories, addCategory, receipt, recent
+ *   ping, categories, addCategory, receipt, recent, delete
  */
 
 var TZ = 'Pacific/Auckland';
@@ -81,6 +81,7 @@ function doPost(e) {
       case 'addCategory': return json_(addCategory_(req.name));
       case 'receipt': return json_(saveReceipt_(req));
       case 'recent': return json_({ ok: true, rows: recent_(Number(req.n) || 25) });
+      case 'delete': return json_(deleteReceipt_(req.id));
       default: return json_({ ok: false, error: 'bad-action', message: 'Unknown action' });
     }
   } catch (err) {
@@ -210,8 +211,27 @@ function recent_(n) {
   var start = Math.max(2, last - n + 1);
   var vals = sh.getRange(start, 1, last - start + 1, HEADERS.length).getValues();
   return vals.reverse().map(function (r) {
-    return { captured: r[1], entity: r[3], cash: r[5] === 'Y', category: r[6], amount: r[7], note: r[8], link: r[10], status: r[11] };
+    return { id: r[0], captured: r[1], entity: r[3], cash: r[5] === 'Y', category: r[6], amount: r[7], note: r[8], link: r[10], status: r[11] };
   });
+}
+
+// Removes the sheet row and moves the Drive file to the Drive bin (recoverable for 30 days).
+function deleteReceipt_(id) {
+  id = String(id || '');
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(id)) return { ok: false, error: 'bad-id', message: 'Bad receipt id' };
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(25000); } catch (e) { return { ok: false, error: 'busy', message: 'Busy, retry' }; }
+  try {
+    var sh = sheet_(SHEET_NAME);
+    var hit = sh.getRange(1, 1, Math.max(sh.getLastRow(), 1), 1).createTextFinder(id).matchEntireCell(true).findNext();
+    if (!hit || hit.getRow() < 2) return { ok: true, deleted: false, message: 'Already gone' };
+    var row = sh.getRange(hit.getRow(), 1, 1, HEADERS.length).getValues()[0];
+    var m = /\/d\/([-\w]+)/.exec(String(row[10] || ''));
+    var trashed = false;
+    if (m) { try { DriveApp.getFileById(m[1]).setTrashed(true); trashed = true; } catch (e) { /* file already gone */ } }
+    sh.deleteRow(hit.getRow());
+    return { ok: true, deleted: true, fileTrashed: trashed };
+  } finally { lock.releaseLock(); }
 }
 
 /* ---------------------------------------------------------------- helpers */

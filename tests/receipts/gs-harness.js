@@ -25,7 +25,7 @@ function makeEnv() {
     getUrl() { return 'https://drive.google.com/drive/folders/' + this.id; }
     getFoldersByName(n) { const m = this.kids.filter(k => k.name === n); let i = 0; return { hasNext: () => i < m.length, next: () => m[i++] }; }
     createFolder(n) { const f = new Folder(n, this); this.kids.push(f); return f; }
-    createFile(blob) { const f = new File(blob, this); this.files.push(f); return f; }
+    createFile(blob) { const f = new File(blob, this); this.files.push(f); registry[f.id] = f; return f; }
   }
   class File {
     constructor(blob, parent) { this.blob = blob; this.name = blob.name; this.parent = parent; this.id = nid('file'); this.trashed = false; }
@@ -50,6 +50,7 @@ function makeEnv() {
     getRange(r, c, nr = 1, nc = 1) { return new Range(this, r, c, nr, nc); }
     appendRow(row) { if (this.failAppend) throw new Error('append failed'); this.grid.push(row.slice()); }
     setFrozenRows() {}
+    deleteRow(r) { this.grid.splice(r - 1, 1); }
   }
   class Range {
     constructor(s, r, c, nr, nc) { Object.assign(this, { s, r, c, nr, nc }); }
@@ -187,6 +188,20 @@ t('recent returns newest first', () => {
   const r = A.call({ action: 'recent', pin: P, n: 3 });
   assert.strictEqual(r.rows.length, 3);
   assert.ok(r.rows[0].captured >= r.rows[1].captured);
+});
+t('delete removes the row, trashes the file, and is safe to repeat', () => {
+  const sh = A.ss.getSheetByName('Receipts');
+  const before = sh.grid.length;
+  const row = sh.grid[sh.grid.length - 1];
+  const fileId = /\/d\/([-\w]+)/.exec(row[10])[1];
+  const r = A.call({ action: 'delete', pin: P, id: row[0] });
+  assert.strictEqual(r.deleted, true);
+  assert.strictEqual(sh.grid.length, before - 1);
+  assert.strictEqual(r.fileTrashed, true);
+  assert.ok(!sh.grid.some(x => x[0] === row[0]));
+  assert.strictEqual(A.call({ action: 'delete', pin: P, id: row[0] }).deleted, false);
+  assert.strictEqual(A.call({ action: 'delete', pin: P, id: 'x' }).ok, false);
+  assert.strictEqual(A.call({ action: 'delete', pin: 'wrong', id: row[0] }).ok, false);
 });
 t('addCategory adds, dedupes case-insensitively, and un-hides', () => {
   const a = A.call({ action: 'addCategory', pin: P, name: '  Pest   control ' });
