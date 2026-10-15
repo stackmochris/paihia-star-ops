@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en-NZ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2F4F3A">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Star Receipts</title>
+<style>
+  :root { --g:#2F4F3A; --bg:#f6f1e8; --ink:#1c241c; --card:#fffdf8; --line:#efe8db; --warn:#8a3b2a; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.4 system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:var(--g); color:#fff; padding:14px 16px 12px; position:sticky; top:0; z-index:2; }
+  header h1 { margin:0; font-size:1.15rem; font-weight:650; }
+  header p { margin:2px 0 0; opacity:.8; font-size:.8rem; }
+  nav { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid #e4dccf; display:flex; padding-bottom:env(safe-area-inset-bottom); }
+  nav button { flex:1; border:0; background:none; padding:10px 0 8px; font-size:.75rem; color:#666; }
+  nav button.on { color:var(--g); font-weight:700; }
+  main { padding:12px 12px 96px; }
+  [hidden] { display:none !important; }
+  .card { background:var(--card); border-radius:14px; padding:14px; margin:0 0 12px; box-shadow:0 1px 0 #e8dfd0; }
+  .card h2 { margin:0 0 4px; font-size:1rem; }
+  .muted { color:#667; font-size:.85rem; }
+  .warn { color:var(--warn); }
+  .shoot { display:flex; flex-direction:column; gap:10px; }
+  button.primary { width:100%; border:0; border-radius:12px; padding:14px; background:var(--g); color:#fff; font:inherit; font-weight:700; }
+  button.primary:disabled { opacity:.55; }
+  button.alt { width:100%; border:0; border-radius:12px; padding:12px; background:#fff; color:var(--ink); font:inherit; font-weight:600; box-shadow:0 1px 0 #e8dfd0; }
+  button.link { border:0; background:none; color:var(--g); font:inherit; font-size:.85rem; font-weight:650; padding:6px 0; text-decoration:underline; }
+  .jumps { display:flex; gap:8px; margin:0 0 12px; }
+  .jumps button { flex:1; border:0; border-radius:12px; padding:12px 6px; background:#fff; color:var(--ink); font-weight:700; font-size:.85rem; box-shadow:0 1px 0 #e8dfd0; }
+  .jumps button.on { background:var(--g); color:#fff; }
+  .field { display:block; margin:0 0 12px; }
+  .field > span { display:block; margin:0 0 4px; font-size:.85rem; color:#667; }
+  input[type=text], input[type=password], input[type=number], input[type=search], select, textarea {
+    width:100%; padding:10px 12px; border:1px solid #ddd3c4; border-radius:10px; font:inherit; background:#fff; color:var(--ink);
+  }
+  textarea { resize:vertical; min-height:44px; }
+  label.check { display:flex; gap:10px; align-items:center; padding:6px 0 12px; }
+  input[type=checkbox] { width:22px; height:22px; accent-color:var(--g); }
+  .pv { margin:0 0 12px; text-align:center; }
+  .pv img { max-width:100%; max-height:32vh; border-radius:10px; border:1px solid #e4dccf; background:#fff; }
+  .pdfchip { display:inline-block; padding:12px 14px; border-radius:10px; background:#fff; border:1px solid #e4dccf; font-weight:600; word-break:break-all; }
+  .item { padding:10px 0; border-bottom:1px solid var(--line); }
+  .item:last-child { border-bottom:0; }
+  .item b { display:block; }
+  .item .top { display:flex; justify-content:space-between; gap:10px; }
+  .badge { display:inline-block; font-size:.7rem; font-weight:700; padding:2px 8px; border-radius:999px; background:#e7efe9; color:var(--g); }
+  .badge.q { background:#f4e6dc; color:var(--warn); }
+  .toast { position:fixed; left:12px; right:12px; bottom:76px; background:var(--g); color:#fff; padding:12px 14px; border-radius:12px; display:none; z-index:5; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Star Receipts</h1>
+  <p>Paihia Star · snap, tag, done</p>
+</header>
+
+<main>
+  <!-- CAPTURE -->
+  <section id="v-cap">
+    <div class="card" id="pinCard" hidden>
+      <h2>PIN</h2>
+      <p class="muted" id="pinMsg">Enter the PIN once. It stays on this phone.</p>
+      <div class="field"><input id="pinIn" type="password" inputmode="numeric" autocomplete="off" aria-label="PIN"></div>
+      <button class="primary" id="pinSave">Unlock</button>
+    </div>
+
+    <div id="capWrap">
+      <div class="card" id="noUrl" hidden>
+        <h2>Not connected yet</h2>
+        <p class="muted">Script URL not set. See DEPLOY.md.</p>
+      </div>
+
+      <div class="card" id="qbar" hidden>
+        <p class="muted" id="qtext"></p>
+        <button class="link" id="qgo">Upload now</button>
+      </div>
+
+      <div class="card" id="shoot">
+        <h2>New receipt</h2>
+        <p class="muted">Lay it flat, fill the frame, check the total is readable.</p>
+        <div class="shoot" style="margin-top:10px">
+          <button class="primary" id="btnCam">Take photo</button>
+          <button class="alt" id="btnFile">Photo or PDF from files</button>
+        </div>
+        <input id="fCam" type="file" accept="image/*" capture="environment" hidden>
+        <input id="fFile" type="file" accept="image/*,application/pdf" hidden>
+      </div>
+
+      <div class="card" id="fields" hidden>
+        <div class="pv" id="pv">
+          <img id="pvImg" alt="Receipt preview" hidden>
+          <div class="pdfchip" id="pvPdf" hidden></div>
+          <div><button class="link" id="retake">Retake / choose another</button></div>
+        </div>
+
+        <div class="jumps" id="entity">
+          <button data-e="Motel" class="on">Motel</button>
+          <button data-e="Part personal">Part personal</button>
+        </div>
+        <label class="field" id="pctWrap" hidden><span>Motel share %</span>
+          <input id="pct" type="number" inputmode="numeric" min="0" max="100" step="1" value="50"></label>
+        <label class="check"><input id="cash" type="checkbox"> <span>Paid cash (no bank line)</span></label>
+
+        <label class="field"><span>Category (optional)</span>
+          <select id="cat"></select></label>
+        <label class="field"><span>Total (optional)</span>
+          <input id="amount" type="text" inputmode="decimal" placeholder="84.50" autocomplete="off"></label>
+        <label class="field"><span>Note (optional)</span>
+          <textarea id="note" rows="1" placeholder="what it was for"></textarea></label>
+
+        <button class="primary" id="save">Save receipt</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RECENT -->
+  <section id="v-recent" hidden>
+    <div class="card">
+      <h2>Recent</h2>
+      <div id="recentList"></div>
+      <button class="link" id="chgPin">Change PIN on this phone</button>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button class="on" data-tab="cap">Capture</button>
+  <button data-tab="recent">Recent</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+// Same hygiene as Star Floor: no service workers, no stale caches.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+  if (window.caches) caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+}
+</script>
+<script src="./config.js"></script>
+<script>
+(function () {
+  'use strict';
+  const CFG = window.STAR_RECEIPTS || {};
+  const SEED_CATS = ["Laundry & linen","Cleaning & guest supplies","Guest consumables","Repairs & maintenance","Electricity","Phone & internet","Fuel & vehicle","Postage","Accounting","Booking.com commission","Rates & insurance","Grounds","Capital item","Other"];
+  const MAX_EDGE = 1800, JPEG_Q = 0.8, MAX_BYTES = 8 * 1024 * 1024;
+  const K = { pin: 'receipts-pin', entity: 'receipts-entity', cats: 'receipts-cats' };
+  const RETRY = new Set(['network', 'bad-response', 'busy']);
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+  function ls(k, v) {
+    try {
+      if (v === undefined) return localStorage.getItem(k);
+      if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v);
+    } catch (e) { return null; }
+  }
+  let toastTimer;
+  function toast(m, ms) {
+    const t = $('toast'); t.textContent = m; t.style.display = 'block';
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = 'none', ms || 2600);
+  }
+  function uuid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  }
+
+  /* ---------- offline queue (IndexedDB, no service worker) ---------- */
+  function idb() {
+    return new Promise((res, rej) => {
+      let r;
+      try { r = indexedDB.open('star-receipts', 1); } catch (e) { return rej(e); }
+      r.onupgradeneeded = () => r.result.createObjectStore('queue', { keyPath: 'id' });
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  }
+  async function qTx(mode, fn) {
+    const db = await idb();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('queue', mode);
+      const out = fn(tx.objectStore('queue'));
+      tx.oncomplete = () => { db.close(); res(out && out.result !== undefined ? out.result : undefined); };
+      tx.onerror = tx.onabort = () => { db.close(); rej(tx.error); };
+    });
+  }
+  const qAll = () => qTx('readonly', s => s.getAll()).catch(() => []);
+  const qPut = item => qTx('readwrite', s => s.put(item)).then(() => true).catch(() => false);
+  const qDel = id => qTx('readwrite', s => s.delete(id)).catch(() => {});
+
+  /* ---------- API ---------- */
+  class ApiError extends Error { constructor(code, msg) { super(msg || code); this.code = code; } }
+  async function api(action, body, timeoutMs) {
+    if (!CFG.SCRIPT_URL) throw new ApiError('config', 'Script URL not set');
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), timeoutMs || 45000);
+    let res;
+    try {
+      res = await fetch(CFG.SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(Object.assign({ action, pin: ls(K.pin) || '' }, body || {})),
+        signal: ctl.signal
+      });
+    } catch (e) { throw new ApiError('network', 'No connection'); }
+    finally { clearTimeout(timer); }
+    let j;
+    try { j = await res.json(); } catch (e) { throw new ApiError('bad-response', 'Unexpected reply from the script'); }
+    if (!j || !j.ok) throw new ApiError((j && j.error) || 'server', (j && j.message) || (j && j.error) || 'Server error');
+    return j;
+  }
+
+  /* ---------- PIN ---------- */
+  function needPin(msg) {
+    ls(K.pin, null);
+    $('pinMsg').textContent = msg || 'Enter the PIN once. It stays on this phone.';
+    $('pinMsg').classList.toggle('warn', !!msg);
+    $('pinCard').hidden = false; $('capWrap').hidden = true; $('pinIn').value = '';
+  }
+  async function submitPin() {
+    const v = $('pinIn').value.trim();
+    if (!v) return;
+    ls(K.pin, v);
+    $('pinSave').disabled = true;
+    try {
+      await api('ping');
+      $('pinCard').hidden = true; $('capWrap').hidden = false;
+      toast('Unlocked'); loadCats(); flush();
+    } catch (e) {
+      if (e.code === 'pin') needPin('PIN not accepted.');
+      else if (e.code === 'locked') needPin('Too many attempts. Try again in 15 minutes.');
+      else { ls(K.pin, null); toast('Could not check the PIN: ' + e.message); }
+    } finally { $('pinSave').disabled = false; }
+  }
+
+  /* ---------- categories ---------- */
+  let cats = [];
+  function drawCats(selected) {
+    const sel = $('cat');
+    sel.innerHTML = '<option value="">—</option>' + cats.map(c => `<option>${esc(c)}</option>`).join('') + '<option value="__new__">+ Add new category…</option>';
+    sel.value = selected && cats.includes(selected) ? selected : '';
+  }
+  async function loadCats(selected) {
+    try { cats = JSON.parse(ls(K.cats) || 'null') || SEED_CATS.slice(); } catch (e) { cats = SEED_CATS.slice(); }
+    drawCats(selected);
+    if (!ls(K.pin) || !CFG.SCRIPT_URL) return;
+    try {
+      const r = await api('categories');
+      if (r.categories && r.categories.length) { cats = r.categories; ls(K.cats, JSON.stringify(cats)); drawCats(selected); }
+    } catch (e) { if (e.code === 'pin' || e.code === 'locked') needPin(e.code === 'locked' ? 'Too many attempts. Try again in 15 minutes.' : 'PIN not accepted.'); }
+  }
+  async function onCatChange() {
+    const sel = $('cat');
+    if (sel.value !== '__new__') return;
+    const name = (prompt('New category name') || '').trim();
+    if (!name) { sel.value = ''; return; }
+    try {
+      const r = await api('addCategory', { name });
+      cats = r.categories; ls(K.cats, JSON.stringify(cats)); drawCats(r.added || name);
+      toast('Added: ' + (r.added || name));
+    } catch (e) { sel.value = ''; toast('Could not add: ' + e.message); }
+  }
+
+  /* ---------- capture ---------- */
+  let cur = null;
+  let entity = ls(K.entity) === 'Part personal' ? 'Part personal' : 'Motel';
+  function drawEntity() {
+    document.querySelectorAll('#entity button').forEach(b => b.classList.toggle('on', b.dataset.e === entity));
+    $('pctWrap').hidden = entity !== 'Part personal';
+  }
+  function b64(blob) {
+    return new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(String(fr.result).split(',')[1] || '');
+      fr.onerror = () => rej(new Error('Could not read that file'));
+      fr.readAsDataURL(blob);
+    });
+  }
+  async function decode(file) {
+    if (window.createImageBitmap) {
+      try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch (e) { /* fall through */ }
+    }
+    return new Promise((res, rej) => {
+      const u = URL.createObjectURL(file), im = new Image();
+      im.onload = () => { URL.revokeObjectURL(u); res(im); };
+      im.onerror = () => { URL.revokeObjectURL(u); rej(new Error('Could not read that photo')); };
+      im.src = u;
+    });
+  }
+  async function prep(file) {
+    if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '')) {
+      if (file.size > MAX_BYTES) throw new Error('PDF is over 8 MB');
+      return { mime: 'application/pdf', data: await b64(file), preview: null, label: file.name || 'invoice.pdf' };
+    }
+    const bmp = await decode(file);
+    let w = bmp.naturalWidth || bmp.width, h = bmp.naturalHeight || bmp.height;
+    const k = Math.min(1, MAX_EDGE / Math.max(w, h));
+    w = Math.max(1, Math.round(w * k)); h = Math.max(1, Math.round(h * k));
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', JPEG_Q));
+    if (!blob) throw new Error('Could not process that photo');
+    if (blob.size > MAX_BYTES) throw new Error('Photo is too large');
+    return { mime: 'image/jpeg', data: await b64(blob), preview: URL.createObjectURL(blob) };
+  }
+  function setCur(r) {
+    clearCur(true);
+    cur = r;
+    if (r.preview) { $('pvImg').src = r.preview; $('pvImg').hidden = false; $('pvPdf').hidden = true; }
+    else { $('pvPdf').textContent = 'PDF · ' + r.label; $('pvPdf').hidden = false; $('pvImg').hidden = true; }
+    $('shoot').hidden = true; $('fields').hidden = false;
+    drawCats('');
+  }
+  function clearCur(keepForm) {
+    if (cur && cur.preview) { try { URL.revokeObjectURL(cur.preview); } catch (e) {} }
+    cur = null;
+    $('pvImg').removeAttribute('src');
+    if (!keepForm) {
+      $('fields').hidden = true; $('shoot').hidden = false;
+      $('amount').value = ''; $('note').value = ''; $('cash').checked = false; $('cat').value = '';
+      $('fCam').value = ''; $('fFile').value = '';
+    }
+  }
+  async function onFile(input) {
+    const f = input.files && input.files[0];
+    input.value = '';
+    if (!f) return;
+    toast('Preparing…', 1500);
+    try { setCur(await prep(f)); } catch (e) { toast(e.message || 'Could not read that file', 3500); }
+  }
+  function parseAmount(s) {
+    s = String(s || '').replace(/[$,\s]/g, '');
+    if (!s) return '';
+    if (!/^\d+(\.\d{1,2})?$/.test(s)) return false;
+    return Number(s);
+  }
+  function busy(on) { $('save').disabled = on; $('save').textContent = on ? 'Saving…' : 'Save receipt'; }
+  function done(msg) { clearCur(false); toast(msg, 3200); refreshQ(); }
+
+  async function save() {
+    if (!cur) return;
+    const amount = parseAmount($('amount').value);
+    if (amount === false) { toast('Total should look like 84.50'); return; }
+    let pct = 100;
+    if (entity === 'Part personal') {
+      pct = parseInt($('pct').value, 10);
+      if (!(pct >= 0 && pct <= 100)) { toast('Motel share must be 0 to 100'); return; }
+    }
+    const cat = $('cat').value === '__new__' ? '' : $('cat').value;
+    const payload = {
+      id: uuid(), capturedAt: new Date().toISOString(), entity, motelPct: pct,
+      cash: $('cash').checked, category: cat, amount, note: $('note').value.trim().slice(0, 300),
+      mime: cur.mime, data: cur.data
+    };
+    ls(K.entity, entity);
+    busy(true);
+    try {
+      const r = await api('receipt', payload, 90000);
+      done('Saved to ' + (r.folder || 'Drive'));
+    } catch (e) {
+      if (e.code === 'pin' || e.code === 'locked') needPin(e.code === 'locked' ? 'Too many attempts. Try again in 15 minutes.' : 'PIN not accepted.');
+      else if (RETRY.has(e.code) || e.code === 'config') {
+        if (e.code === 'config') toast('Script URL not set', 3500);
+        else if (await qPut({ id: payload.id, payload, queuedAt: Date.now() })) done('No signal. Queued; it uploads next time the app opens with signal.');
+        else toast('Not saved: no signal and phone storage is blocked. Stay on this screen and retry.', 5000);
+      } else toast('Not saved: ' + e.message, 4500);
+    } finally { busy(false); }
+  }
+
+  /* ---------- queue flush ---------- */
+  let flushing = false;
+  async function flush() {
+    if (flushing || !ls(K.pin) || !CFG.SCRIPT_URL) return;
+    flushing = true;
+    let sent = 0;
+    try {
+      for (const it of await qAll()) {
+        try { await api('receipt', it.payload, 90000); await qDel(it.id); sent++; }
+        catch (e) {
+          if (e.code === 'pin' || e.code === 'locked') { needPin(e.code === 'locked' ? 'Too many attempts. Try again in 15 minutes.' : 'PIN not accepted.'); break; }
+          if (RETRY.has(e.code)) break;
+          it.error = e.message; await qPut(it);
+        }
+      }
+    } finally { flushing = false; }
+    if (sent) toast(sent + ' queued receipt' + (sent > 1 ? 's' : '') + ' uploaded');
+    refreshQ();
+  }
+  async function refreshQ() {
+    const q = await qAll();
+    $('qbar').hidden = !q.length;
+    if (q.length) {
+      const stuck = q.filter(i => i.error).length;
+      $('qtext').textContent = q.length + ' waiting to upload' + (stuck ? ' (' + stuck + ' stuck: ' + q.find(i => i.error).error + ')' : '');
+    }
+  }
+
+  /* ---------- recent ---------- */
+  function fmtAmt(a) { return (a === '' || a == null) ? '' : '$' + Number(a).toFixed(2); }
+  async function renderRecent() {
+    const box = $('recentList');
+    box.innerHTML = '<p class="muted">Loading…</p>';
+    const q = await qAll();
+    let html = q.map(i => `<div class="item"><div class="top"><b>${esc(i.payload.category || 'Uncategorised')}</b><span class="badge q">waiting</span></div>
+      <span class="muted">${esc(new Date(i.payload.capturedAt).toLocaleString('en-NZ'))} · ${esc(i.payload.entity)} ${esc(fmtAmt(i.payload.amount))}${i.error ? ' · ' + esc(i.error) : ''}</span>
+      <div><button class="link" data-discard="${esc(i.id)}">Discard</button></div></div>`).join('');
+    if (!ls(K.pin)) { box.innerHTML = '<p class="muted">Enter the PIN on the Capture tab first.</p>'; return; }
+    try {
+      const r = await api('recent', { n: 25 });
+      html += (r.rows || []).map(w => `<div class="item"><div class="top"><b>${esc(w.category || 'Uncategorised')}</b><span>${esc(fmtAmt(w.amount))}</span></div>
+        <span class="muted">${esc(w.captured)} · ${esc(w.entity)}${w.cash ? ' · cash' : ''}${w.note ? ' · ' + esc(w.note) : ''}</span>
+        <div><span class="badge">${esc(w.status || 'Captured')}</span> ${w.link ? `<a href="${esc(w.link)}" target="_blank" rel="noopener" class="muted">open</a>` : ''}</div></div>`).join('')
+        || '';
+      if (!html) html = '<p class="muted">Nothing yet.</p>';
+    } catch (e) {
+      if (e.code === 'pin' || e.code === 'locked') { needPin('PIN not accepted.'); showTab('cap'); return; }
+      html += `<p class="muted">Can’t load history: ${esc(e.message)}</p>`;
+    }
+    box.innerHTML = html;
+    box.querySelectorAll('[data-discard]').forEach(b => b.onclick = async () => {
+      if (confirm('Discard this queued receipt? The photo is lost.')) { await qDel(b.dataset.discard); refreshQ(); renderRecent(); }
+    });
+  }
+
+  /* ---------- wiring ---------- */
+  function showTab(t) {
+    $('v-cap').hidden = t !== 'cap'; $('v-recent').hidden = t !== 'recent';
+    document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+    if (t === 'recent') renderRecent();
+  }
+  document.querySelectorAll('nav button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+  document.querySelectorAll('#entity button').forEach(b => b.onclick = () => { entity = b.dataset.e; drawEntity(); });
+  $('btnCam').onclick = () => $('fCam').click();
+  $('btnFile').onclick = () => $('fFile').click();
+  $('fCam').onchange = e => onFile(e.target);
+  $('fFile').onchange = e => onFile(e.target);
+  $('retake').onclick = () => clearCur(false);
+  $('cat').onchange = onCatChange;
+  $('save').onclick = save;
+  $('qgo').onclick = flush;
+  $('pinSave').onclick = submitPin;
+  $('pinIn').onkeydown = e => { if (e.key === 'Enter') submitPin(); };
+  $('chgPin').onclick = () => { showTab('cap'); needPin(''); };
+  window.addEventListener('online', flush);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) flush(); });
+
+  drawEntity();
+  $('noUrl').hidden = !!CFG.SCRIPT_URL;
+  if (!ls(K.pin)) needPin('');
+  loadCats();
+  refreshQ();
+  flush();
+})();
+</script>
+</body>
+</html>
