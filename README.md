@@ -1,6 +1,12 @@
 # Paihia Star — Floor + Desk
 
-Two webpages. Not an APK. Sheet is the pipe.
+Floor, Desk and Receipts are browser tools. The Sheet is the data path for Floor and Desk.
+
+## Find the source for a task
+
+- **Floor and Desk behaviour.** Open [Floor](floor/index.html) or [Desk](desk/index.html). Follow shared configuration in [config.js](config.js) or the [operations script](apps-script/Code.gs) when the issue crosses the Sheet boundary.
+- **Receipts.** Start with [handoff](docs/receipts/HANDOFF.md) for intent, [receipt UI](receipts/index.html) and [receipt Apps Script](apps-script/receipts/Code.gs) for current code. Use [acceptance](docs/receipts/ACCEPTANCE.md) for checks and [deployment](docs/receipts/DEPLOY.md) only for rollout questions.
+- Configuration and code show what is wired in this checkout. Verify deployment separately before reporting live behaviour or changing access.
 
 **Sheet:** https://docs.google.com/spreadsheets/d/1uEPMq9wCpCeJoga3EOTyyBKsceV9rWNxBvd8Z1UkPeU/edit
 
